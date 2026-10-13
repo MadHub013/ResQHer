@@ -75,5 +75,4 @@ ResQHer is not just an app—it’s a movement towards making **Delhi a safer ci
 
 
 Contact
-For any questions or contributions, please reach out at [pranay.rajvanshi@gmail.com] [sharma15705rahul@gmail.com] [parthratra11@gmail.com].
-
+For any questions or contributions, please reach out at [MadhavBajaj2006@gmail.com@gmail.com].
