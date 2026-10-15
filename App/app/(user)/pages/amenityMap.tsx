@@ -7,7 +7,7 @@ import {
   ScrollView,
   Switch,
 } from "react-native";
-import MapView, { Marker, Callout } from "react-native-maps";
+import MapView, { Marker, Callout, Region } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import AmenityFilter from "../../../components/AmenityMap/AmenityFilter";
@@ -15,14 +15,20 @@ import AmenityDetail from "../../../components/AmenityMap/AmenityDetail";
 import SearchBar from "../../../components/AmenityMap/SearchBar";
 import Header from "@/app/AppComponents/User/Header";
 import { router } from "expo-router";
-import { enhancedAmenityData } from "../../../data/amenityData";
+import {
+  Amenity,
+  AmenityFilterKey,
+  AmenityFilters,
+  enhancedAmenityData,
+} from "../../../data/amenityData";
 
 export default function AmenityMap() {
-  const [selectedAmenity, setSelectedAmenity] = useState(null);
+  const [selectedAmenity, setSelectedAmenity] = useState<Amenity | null>(null);
   const [showDetail, setShowDetail] = useState(false);
-  const [amenities, setAmenities] = useState([]);
+  const [amenities, setAmenities] = useState<Amenity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filters, setFilters] = useState({
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<AmenityFilters>({
     police: true,
     hospital: true,
     helpCenter: true,
@@ -31,7 +37,7 @@ export default function AmenityMap() {
     shelter: true,
     pharmacy: true,
   });
-  const [region, setRegion] = useState({
+  const [region, setRegion] = useState<Region>({
     latitude: 28.6139,
     longitude: 77.209,
     latitudeDelta: 0.0922,
@@ -56,8 +62,8 @@ export default function AmenityMap() {
     loadAmenities();
   }, []);
 
-  const getMarkerColor = (type) => {
-    const colors = {
+  const getMarkerColor = (type: string) => {
+    const colors: Record<string, string> = {
       police: "#1a73e8",
       hospital: "#e53935",
       helpCenter: "#9c27b0",
@@ -69,7 +75,7 @@ export default function AmenityMap() {
     return colors[type] || "#000";
   };
 
-  const MarkerCallout = ({ amenity }) => (
+  const MarkerCallout = ({ amenity }: { amenity: Amenity }) => (
     <View
       style={{
         backgroundColor: "white",
@@ -79,8 +85,8 @@ export default function AmenityMap() {
       }}
     >
       <Text style={{ fontWeight: "bold", fontSize: 16 }}>{amenity.name}</Text>
-      <Text style={{ color: "#666" }}>{amenity.description}</Text>
-      <Text style={{ color: "#1a73e8" }}>📞 {amenity.contact}</Text>
+      <Text style={{ color: "#666" }}>{amenity.notes}</Text>
+      <Text style={{ color: "#1a73e8" }}>📞 {amenity.phone}</Text>
       <View
         style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}
       >
@@ -94,10 +100,36 @@ export default function AmenityMap() {
 
   // Filter amenities based on selected filters
   const filteredAmenities = React.useMemo(() => {
-    return amenities.filter((item) => filters[item.type]);
-  }, [filters, amenities]);
+    const query = searchQuery.trim().toLowerCase();
+    return amenities.filter((item) => {
+      const filterType: AmenityFilterKey | null =
+        item.type === "safePlace"
+          ? "shelter"
+          : item.type === "government" || item.type === "emergency"
+            ? "helpCenter"
+            : item.type === "police" ||
+                item.type === "hospital" ||
+                item.type === "helpCenter" ||
+                item.type === "transport" ||
+                item.type === "safeCab" ||
+                item.type === "shelter" ||
+                item.type === "pharmacy"
+              ? item.type
+              : null;
+      const matchesFilter = filterType === null || filters[filterType];
+      const searchableText = [
+        item.name,
+        item.address,
+        item.notes,
+        item.type,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return matchesFilter && (!query || searchableText.includes(query));
+    });
+  }, [filters, amenities, searchQuery]);
 
-  const onRegionChangeComplete = (newRegion) => {
+  const onRegionChangeComplete = (newRegion: Region) => {
     const DELHI_LIMITS = {
       north: 28.88,
       south: 28.4,
@@ -136,6 +168,12 @@ export default function AmenityMap() {
       <View className="px-4 pt-4 mb-2 bg-[#FFF1F3]">
         <Header />
       </View>
+      <View className="bg-amber-100 px-4 py-2">
+        <Text className="text-amber-900 text-xs">
+          Directory entries, coordinates, and phone numbers are not verified.
+          Confirm details independently; call 112 in an emergency.
+        </Text>
+      </View>
 
       {/* Main Content */}
       <View style={{ flex: 1, position: "relative" }}>
@@ -173,7 +211,7 @@ export default function AmenityMap() {
 
         {/* Search Bar */}
         <View style={{ position: "absolute", top: 8, left: 16, right: 16 }}>
-          <SearchBar darkMode={false} />
+          <SearchBar darkMode={false} onSearchChange={setSearchQuery} />
         </View>
 
         {/* Filter UI */}
@@ -183,7 +221,8 @@ export default function AmenityMap() {
             showsHorizontalScrollIndicator={false}
             style={{ paddingHorizontal: 16 }}
           >
-            {Object.entries(filters).map(([key, value]) => (
+            {(Object.entries(filters) as [AmenityFilterKey, boolean][]).map(
+              ([key, value]) => (
               <TouchableOpacity
                 key={key}
                 style={{
@@ -209,7 +248,8 @@ export default function AmenityMap() {
                   {key}
                 </Text>
               </TouchableOpacity>
-            ))}
+              )
+            )}
           </ScrollView>
         </View>
       </View>

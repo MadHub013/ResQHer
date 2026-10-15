@@ -1,26 +1,12 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, Switch, TouchableOpacity } from "react-native";
+import React from "react";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import LottieView from "lottie-react-native";
 import Header from "@/app/AppComponents/User/Header";
 import { router } from "expo-router";
 
 export default function IotLink() {
-  const [isConnected] = useState(true);
-  const [silentAlert, setSilentAlert] = useState(true);
-  const [loudAlert, setLoudAlert] = useState(true);
-  const [autoCall, setAutoCall] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [showReconnecting, setShowReconnecting] = useState(false);
-
-  const handleReconnect = () => {
-    setShowReconnecting(true);
-    setTimeout(() => setShowReconnecting(false), 2000);
-  };
-
-  const handleFindBracelet = () => {
-    alert("Your bracelet is vibrating! Check nearby.");
-  };
+  const isConnected = false;
+  const isDarkMode = false;
 
   return (
     <>
@@ -44,44 +30,22 @@ export default function IotLink() {
                 >
                   {isConnected ? "Device Connected ✅" : "No Device Linked ❌"}
                 </Text>
-                <TouchableOpacity
-                  onPress={() => setIsDarkMode(!isDarkMode)}
-                  className="hidden"
-                >
-                  <Ionicons
-                    name={isDarkMode ? "sunny" : "moon"}
-                    size={24}
-                    color={isDarkMode ? "white" : "black"}
-                  />
-                </TouchableOpacity>
               </View>
               <Text
                 className={`text-md mt-2 ${
                   isDarkMode ? "text-gray-400" : "text-gray-600"
                 }`}
               >
-                ResQHer Bracelet #001
+                No bracelet linked
               </Text>
               <Text
                 className={`text-xs ${
                   isDarkMode ? "text-gray-500" : "text-gray-400"
                 }`}
               >
-                MAC: 00:11:22:33:44:55
+                Bluetooth pairing and device alerts are not implemented.
               </Text>
 
-              {showReconnecting ? (
-                <Text className="text-blue-500 mt-2">
-                  Attempting to reconnect...
-                </Text>
-              ) : (
-                <TouchableOpacity
-                  className="bg-[#DC143C] p-3 rounded-lg mt-2"
-                  onPress={handleReconnect}
-                >
-                  <Text className="text-white text-center">Reconnect</Text>
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Emergency Settings Card */}
@@ -95,40 +59,12 @@ export default function IotLink() {
                   isDarkMode ? "text-white" : "text-black"
                 }`}
               >
-                Emergency Settings
+                Device safety settings unavailable
               </Text>
-
-              <View className="flex-row justify-between items-center mb-3">
-                <Text className={isDarkMode ? "text-white" : "text-black"}>
-                  Silent Alert (Single Tap)
-                </Text>
-                <Switch
-                  value={silentAlert}
-                  onValueChange={setSilentAlert}
-                  trackColor={{ false: "#767577", true: "#DC143C" }}
-                />
-              </View>
-
-              <View className="flex-row justify-between items-center mb-3"></View>
-              <Text className={isDarkMode ? "text-white" : "text-black"}>
-                Loud Alarm (Double Tap)
+              <Text className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
+                Alert modes and automatic calling cannot be configured until a
+                supported bracelet and BLE service are connected.
               </Text>
-              <Switch
-                value={loudAlert}
-                onValueChange={setLoudAlert}
-                trackColor={{ false: "#767577", true: "#DC143C" }}
-              />
-            </View>
-
-            <View className="flex-row justify-between items-center">
-              <Text className={isDarkMode ? "text-white" : "text-black"}>
-                Auto-Call (Hold 3s)
-              </Text>
-              <Switch
-                value={autoCall}
-                onValueChange={setAutoCall}
-                trackColor={{ false: "#767577", true: "#DC143C" }}
-              />
             </View>
           </View>
 
@@ -147,11 +83,11 @@ export default function IotLink() {
             </Text>
 
             <View className="flex-row items-center mb-2">
-              <Ionicons name="battery-full" size={20} color="#4CAF50" />
+              <Ionicons name="bluetooth-outline" size={20} color="#666" />
               <Text
                 className={`ml-2 ${isDarkMode ? "text-white" : "text-black"}`}
               >
-                Battery: 75%
+                Battery status unavailable
               </Text>
             </View>
 
@@ -160,22 +96,20 @@ export default function IotLink() {
                 isDarkMode ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              Last Synced: Jan 28, 2024, 12:30 PM
+              No device sync available
             </Text>
             <Text
               className={`text-sm ${
                 isDarkMode ? "text-gray-400" : "text-gray-600"
               }`}
             >
-              Firmware: v1.2.0
+              Firmware status unavailable
             </Text>
 
-            <TouchableOpacity
-              className="bg-[#DC143C] p-3 rounded-lg mt-3"
-              onPress={handleFindBracelet}
-            >
-              <Text className="text-white text-center">Find My Bracelet</Text>
-            </TouchableOpacity>
+            <Text className="text-gray-600">
+              Battery, firmware, and find-device actions require a real device
+              connection.
+            </Text>
           </View>
 
           {/* Future Features Card */}
@@ -226,7 +160,7 @@ export default function IotLink() {
               <Text
                 className={`ml-2 ${isDarkMode ? "text-white" : "text-black"}`}
               >
-                Your data is encrypted and secure
+                Device connection is unavailable; security status cannot be verified.
               </Text>
             </View>
           </View>

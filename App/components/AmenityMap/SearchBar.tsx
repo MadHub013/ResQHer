@@ -2,12 +2,17 @@ import React, { useState } from "react";
 import { View, TextInput, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const SearchBar = ({ darkMode }) => {
+interface SearchBarProps {
+  darkMode?: boolean;
+  onSearchChange?: (query: string) => void;
+}
+
+const SearchBar = ({ darkMode = false, onSearchChange }: SearchBarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleSearch = () => {
-    // TODO: Implement search functionality
-    console.log("Searching for:", searchQuery);
+  const updateSearch = (query: string) => {
+    setSearchQuery(query);
+    onSearchChange?.(query);
   };
 
   return (
@@ -19,11 +24,10 @@ const SearchBar = ({ darkMode }) => {
           placeholder="Search amenities..."
           placeholderTextColor="#666"
           value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
+          onChangeText={updateSearch}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
+          <TouchableOpacity onPress={() => updateSearch("")}>
             <Ionicons
               name="close-circle"
               size={20}

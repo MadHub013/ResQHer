@@ -8,21 +8,49 @@ import {
   Dimensions,
   StyleSheet,
 } from "react-native";
-import React, { useState } from "react";
+import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import MapView, { Marker } from "react-native-maps";
-import LottieView from "lottie-react-native";
+import MapView from "react-native-maps";
 import Header from "@/app/AppComponents/User/Header";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-const EmergencyButton = ({ number, title, description }) => (
+const callEmergencyServices = () => {
+  Alert.alert("Call emergency services", "Open the phone app to call 112?", [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "Call 112",
+      onPress: () =>
+        void Linking.openURL("tel:112").catch(() =>
+          Alert.alert("Unable to open phone", "Please dial 112 directly.")
+        ),
+    },
+  ]);
+};
+
+interface EmergencyButtonProps {
+  number: string;
+  title: string;
+  description: string;
+}
+
+const EmergencyButton = ({
+  number,
+  title,
+  description,
+}: EmergencyButtonProps) => (
   <TouchableOpacity
     className="bg-[#DC143C] p-5 rounded-xl mb-4 shadow-lg elevation-5"
     onPress={() => {
       Alert.alert("Emergency Call", `Are you sure you want to call ${title}?`, [
         { text: "Cancel", style: "cancel" },
-        { text: "Call", onPress: () => Linking.openURL(`tel:${number}`) },
+        {
+          text: "Call",
+          onPress: () =>
+            void Linking.openURL(`tel:${number}`).catch(() =>
+              Alert.alert("Unable to open phone", "Please dial the number directly.")
+            ),
+        },
       ]);
     }}
   >
@@ -32,41 +60,12 @@ const EmergencyButton = ({ number, title, description }) => (
 );
 
 export default function PoliceConnect() {
-  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
-
-  const handleSendLocation = () => {
-    Alert.alert(
-      "Send Location",
-      "Send your live location to the nearest police station?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Send",
-          onPress: () => {
-            setShowSuccessAnimation(true);
-            setTimeout(() => setShowSuccessAnimation(false), 2000);
-          },
-        },
-      ]
-    );
-  };
-
   const initialRegion = {
     latitude: 28.6139,
     longitude: 77.209,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   };
-
-  const nearbyStations = [
-    {
-      id: 1,
-      name: "Central Police Station",
-      latitude: 28.6139,
-      longitude: 77.209,
-    },
-    { id: 2, name: "City Police HQ", latitude: 28.6239, longitude: 77.219 },
-  ];
 
   return (
     <SafeAreaView className="flex-1 bg-[#FFF1F3]">
@@ -78,20 +77,24 @@ export default function PoliceConnect() {
           </View>
           <EmergencyButton
             number="112"
-            title="Police Emergency"
-            description="24/7 Emergency Response"
+            title="Emergency services (112)"
+            description="Opens your phone app; no request is sent from ResQHer."
           />
           <EmergencyButton
             number="1091"
-            title="Women's Safety Helpline"
-            description="Immediate Assistance for Women"
+            title="Women's helpline (1091)"
+            description="Opens your phone app; no request is sent from ResQHer."
           />
         </View>
 
         {/* Police Station Locator */}
         <View className="mb-4">
           <Text className="text-xl font-bold mb-2 text-[#333]">
-            Nearby Police Stations
+            Map Preview
+          </Text>
+          <Text className="text-amber-900 bg-amber-100 rounded-lg p-3 mb-2">
+            Map is centered on Delhi by default. This app has no verified police
+            station directory or live dispatch connection.
           </Text>
           <View style={styles.mapContainer}>
             <MapView
@@ -100,19 +103,7 @@ export default function PoliceConnect() {
               initialRegion={initialRegion}
               showsUserLocation={true}
               showsMyLocationButton={true}
-            >
-              {nearbyStations.map((station) => (
-                <Marker
-                  key={station.id}
-                  coordinate={{
-                    latitude: station.latitude,
-                    longitude: station.longitude,
-                  }}
-                  title={station.name}
-                  description="Police Station"
-                />
-              ))}
-            </MapView>
+            />
           </View>
         </View>
 
@@ -120,40 +111,24 @@ export default function PoliceConnect() {
         <View className="flex-row justify-between mb-4">
           <TouchableOpacity
             className="bg-white px-4 py-5 rounded-xl flex-1 mr-2 shadow-lg elevation-3"
-            onPress={handleSendLocation}
+            onPress={callEmergencyServices}
           >
             <Text className="text-[#DC143C] text-center font-bold text-base">
-              Send My Location
+              Call 112
             </Text>
           </TouchableOpacity>
-          {/* <TouchableOpacity
-            className="bg-white px-4 py-5 rounded-xl flex-1 ml-2 shadow-lg elevation-3"
-            onPress={() => {
-              Alert.alert(
-                "Police Escort",
-                "Police escort request sent! You will receive a response shortly.\nEstimated arrival: 15 minutes"
-              );
-            }}
-          >
-            <Text className="text-[#DC143C] text-center font-bold text-base">
-              Request Police Escort
-            </Text>
-          </TouchableOpacity> */}
         </View>
 
         {/* Report Incident Button */}
         <TouchableOpacity
           className="bg-[#DC143C] p-5 rounded-xl mb-6 shadow-lg elevation-5"
-          onPress={() => {
-            // Navigate to report form
-          }}
+          onPress={() => router.push("/pages/report")}
         >
           <Text className="text-white text-center text-lg font-bold">
             Report an Incident
           </Text>
         </TouchableOpacity>
 
-        {/* AI Chatbot Button */}
         {/* AI Chatbot Button */}
         <TouchableOpacity
           className="absolute bottom-5 right-5 w-16 h-16 m-1 rounded-full bg-[#DC143C] justify-center items-center shadow-lg"
@@ -164,15 +139,6 @@ export default function PoliceConnect() {
           <Ionicons name="chatbubbles-outline" size={28} color="#FFF" />
         </TouchableOpacity>
 
-        {showSuccessAnimation && (
-          <View className="absolute inset-0 bg-black/50 items-center justify-center">
-            <View className="bg-white p-6 rounded-xl shadow-2xl">
-              <Text className="text-[#333] text-lg font-medium">
-                Location sent successfully!
-              </Text>
-            </View>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );

@@ -30,8 +30,7 @@ export default function AiChat() {
 
     if (isUser) {
       setIsTyping(true);
-      // Simulate bot thinking
-      setTimeout(async () => {
+      try {
         const botResponse = await handleBotResponse(text);
         setMessages((prev) => [
           ...prev,
@@ -42,8 +41,20 @@ export default function AiChat() {
             timestamp: new Date(),
           },
         ]);
+      } catch (error) {
+        console.error("Unable to prepare offline guidance:", error);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            text: "I could not prepare a response. ResQHer cannot contact emergency services; call 112 if you are in immediate danger.",
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+      } finally {
         setIsTyping(false);
-      }, 1000);
+      }
     }
   };
 
@@ -55,6 +66,10 @@ export default function AiChat() {
     <SafeAreaView className="flex-1 bg-[#FFF1F3] ">
       <View className="px-4 py-2">
         <Header />
+        <Text className="text-amber-900 bg-amber-100 rounded-lg p-3 mt-2">
+          Offline help guide only—not live AI, emergency dispatch, or location
+          sharing. Call 112 in an emergency.
+        </Text>
       </View>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -72,7 +87,7 @@ export default function AiChat() {
             ))}
             {isTyping && (
               <View className="flex-row items-center p-2 ml-4">
-                <Text className="text-gray-500">AI is thinking...</Text>
+                <Text className="text-gray-500">Preparing guidance...</Text>
               </View>
             )}
           </ScrollView>

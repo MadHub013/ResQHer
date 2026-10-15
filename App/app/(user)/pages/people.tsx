@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -6,21 +6,102 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
+  Alert,
+  Share,
 } from "react-native";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import PostCard from "@/components/PostCard";
-import CreatePostModal from "@/components/CreatePostModal";
+import CreatePostModal, {
+  CommunityPost,
+} from "@/components/CreatePostModal";
 import { mockPosts } from "@/constants/mockData";
 import Header from "@/app/AppComponents/User/Header";
 import { router } from "expo-router";
-// import Header from "@/AppComponents/User/Header";
+import { readLocalValue, writeLocalValue } from "@/utils/localStore";
+
+const POSTS_KEY = "resqher.community.posts";
+const demoPosts: CommunityPost[] = mockPosts.map((post) => ({
+  ...post,
+  imageUrl: undefined,
+  likedByMe: false,
+}));
 
 export default function PeopleConnect() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("recent");
   const [isModalVisible, setModalVisible] = useState(false);
-  const [posts, setPosts] = useState(mockPosts);
+  const [posts, setPosts] = useState<CommunityPost[]>(demoPosts);
+
+  useEffect(() => {
+    let isMounted = true;
+    readLocalValue<CommunityPost[]>(POSTS_KEY, demoPosts)
+      .then((savedPosts) => {
+        if (isMounted) setPosts(savedPosts);
+      })
+      .catch((error: unknown) => {
+        Alert.alert(
+          "Could not load community posts",
+          error instanceof Error ? error.message : "Please restart the app."
+        );
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredPosts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const matchingPosts = posts.filter((post) =>
+      [post.username, post.content, post.location ?? ""]
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+    if (filter === "most liked") {
+      return matchingPosts.sort((a, b) => b.likes - a.likes);
+    }
+    if (filter === "by location") {
+      return matchingPosts.sort((a, b) =>
+        (a.location ?? "").localeCompare(b.location ?? "")
+      );
+    }
+    return matchingPosts;
+  }, [filter, posts, searchQuery]);
+
+  const handleCreatePost = async (post: CommunityPost) => {
+    const updatedPosts = [post, ...posts];
+    try {
+      await writeLocalValue(POSTS_KEY, updatedPosts);
+      setPosts(updatedPosts);
+      setModalVisible(false);
+    } catch (error) {
+      Alert.alert(
+        "Could not save post",
+        error instanceof Error ? error.message : "Please try again."
+      );
+    }
+  };
+
+  const handleLike = async (post: CommunityPost) => {
+    const updatedPosts = posts.map((item) =>
+      item.id === post.id
+        ? {
+            ...item,
+            likedByMe: !item.likedByMe,
+            likes: Math.max(0, item.likes + (item.likedByMe ? -1 : 1)),
+          }
+        : item
+    );
+    try {
+      await writeLocalValue(POSTS_KEY, updatedPosts);
+      setPosts(updatedPosts);
+    } catch (error) {
+      Alert.alert(
+        "Could not save reaction",
+        error instanceof Error ? error.message : "Please try again."
+      );
+    }
+  };
 
   const filterOptions = ["Recent", "Most Liked", "By Location"];
 
@@ -73,18 +154,23 @@ export default function PeopleConnect() {
       </View>
 
       {/* Posts Feed */}
+      <View className="px-4">
+        <Text className="text-gray-600 text-sm">
+          This community feed is stored on this device; posts are not shared with other users.
+        </Text>
+      </View>
       <ScrollView className="flex-1 px-4">
         <View className="space-y-4">
-          {posts.map((post) => (
+          {filteredPosts.map((post) => (
             <View
               key={post.id}
               className="bg-white rounded-xl p-4 my-1 border-hairline border-[#DC143C] shadow-md shadow-[#DC143C]/10"
             >
               {/* User Info */}
               <View className="flex-row items-center mb-3">
-                {post.userAvatar ? (
+                {post.imageUrl ? (
                   <Image
-                    source={{ uri: post.userAvatar }}
+                  source={{ uri: post.imageUrl }}
                     className="w-10 h-10 rounded-full"
                   />
                 ) : (
@@ -94,7 +180,7 @@ export default function PeopleConnect() {
                 )}
                 <View className="ml-3">
                   <Text className="font-bold text-gray-800">
-                    {post.userName}
+                    {post.username}
                   </Text>
                   <Text className="text-gray-500 text-sm">
                     {post.timestamp}
@@ -104,20 +190,35 @@ export default function PeopleConnect() {
 
               {/* Post Content */}
               <Text className="text-gray-700 mb-3">{post.content}</Text>
-              {post.image && (
+              {post.imageUrl && (
                 <Image
-                  source={{ uri: post.image }}
+                  source={{ uri: post.imageUrl }}
                   className="w-full h-48 rounded-xl mb-3"
                 />
               )}
 
               {/* Interaction Buttons */}
               <View className="flex-row justify-between items-center pt-2 border-t border-gray-100">
-                <TouchableOpacity className="flex-row items-center">
-                  <Ionicons name="heart-outline" size={20} color="#E85D75" />
+                <TouchableOpacity
+                  className="flex-row items-center"
+                  onPress={() => void handleLike(post)}
+                >
+                  <Ionicons
+                    name={post.likedByMe ? "heart" : "heart-outline"}
+                    size={20}
+                    color="#E85D75"
+                  />
                   <Text className="ml-2 text-gray-600">{post.likes}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center">
+                <TouchableOpacity
+                  className="flex-row items-center"
+                  onPress={() =>
+                    Alert.alert(
+                      "Comments unavailable",
+                      "This app has no community server configured, so comments cannot be shared or received."
+                    )
+                  }
+                >
                   <Ionicons
                     name="chatbubble-outline"
                     size={20}
@@ -125,7 +226,14 @@ export default function PeopleConnect() {
                   />
                   <Text className="ml-2 text-gray-600">{post.comments}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center">
+                <TouchableOpacity
+                  className="flex-row items-center"
+                  onPress={() =>
+                    void Share.share({
+                      message: `${post.content}${post.location ? `\n${post.location}` : ""}`,
+                    })
+                  }
+                >
                   <Ionicons
                     name="share-social-outline"
                     size={20}
@@ -136,6 +244,11 @@ export default function PeopleConnect() {
               </View>
             </View>
           ))}
+          {filteredPosts.length === 0 && (
+            <Text className="text-center text-gray-600 py-10">
+              No posts match your search.
+            </Text>
+          )}
         </View>
       </ScrollView>
 
@@ -151,10 +264,7 @@ export default function PeopleConnect() {
       <CreatePostModal
         visible={isModalVisible}
         onClose={() => setModalVisible(false)}
-        onSubmit={(newPost) => {
-          setPosts([newPost, ...posts]);
-          setModalVisible(false);
-        }}
+        onSubmit={(newPost) => void handleCreatePost(newPost)}
       />
 
       {/* AI Chatbot Button */}

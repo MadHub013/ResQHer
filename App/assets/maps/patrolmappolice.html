@@ -8,15 +8,29 @@
       L_DISABLE_3D = false;
 
       function zoomIn() {
-        map.setZoom(map.getZoom() + 1);
+        map_fd0420ca96182bfe66aec61593b30ee5.setZoom(
+          map_fd0420ca96182bfe66aec61593b30ee5.getZoom() + 1
+        );
       }
 
       function zoomOut() {
-        map.setZoom(map.getZoom() - 1);
+        map_fd0420ca96182bfe66aec61593b30ee5.setZoom(
+          map_fd0420ca96182bfe66aec61593b30ee5.getZoom() - 1
+        );
       }
 
       function recenterMap() {
         map_fd0420ca96182bfe66aec61593b30ee5.setView([28.6139, 77.209], 11);
+      }
+
+      function toggleMapLayer() {
+        if (map_fd0420ca96182bfe66aec61593b30ee5.hasLayer(tile_layer_559731daf4722ab5925f30704381f75f)) {
+          map_fd0420ca96182bfe66aec61593b30ee5.removeLayer(tile_layer_559731daf4722ab5925f30704381f75f);
+          satellite_layer.addTo(map_fd0420ca96182bfe66aec61593b30ee5);
+        } else {
+          map_fd0420ca96182bfe66aec61593b30ee5.removeLayer(satellite_layer);
+          tile_layer_559731daf4722ab5925f30704381f75f.addTo(map_fd0420ca96182bfe66aec61593b30ee5);
+        }
       }
     </script>
 
@@ -133,6 +147,14 @@
 
     tile_layer_559731daf4722ab5925f30704381f75f.addTo(
       map_fd0420ca96182bfe66aec61593b30ee5
+    );
+
+    var satellite_layer = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        attribution: "Tiles &copy; Esri",
+        maxZoom: 19,
+      }
     );
 
     var macro_element_109db0b8770c50faf3cb8a028546f1c3 = L.Polyline.fromEncoded(

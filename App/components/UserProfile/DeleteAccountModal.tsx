@@ -1,17 +1,20 @@
-import React, { useState } from "react";
-import { Modal, View, Text, TouchableOpacity, TextInput } from "react-native";
+import React from "react";
+import { Modal, View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-export const DeleteAccountModal = ({ visible, onClose, onConfirm }) => {
-  const [password, setPassword] = useState("");
+interface DeleteAccountModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onConfirm: () => void | Promise<void>;
+}
 
+export const DeleteAccountModal = ({
+  visible,
+  onClose,
+  onConfirm,
+}: DeleteAccountModalProps) => {
   const handleConfirm = () => {
-    if (!password) {
-      alert("Please enter your password to confirm");
-      return;
-    }
     onConfirm();
-    setPassword("");
   };
 
   return (
@@ -23,28 +26,18 @@ export const DeleteAccountModal = ({ visible, onClose, onConfirm }) => {
           </View>
 
           <Text className="text-xl font-bold text-center mb-2">
-            Delete Account?
+            Clear local data?
           </Text>
           <Text className="text-gray-600 text-center mb-6">
-            This action cannot be undone. All your data will be permanently
-            deleted.
+            This clears profile, emergency contacts, reports, feedback, and
+            community posts saved on this device. It does not delete a server
+            account.
           </Text>
-
-          <TextInput
-            className="bg-gray-100 p-3 rounded-lg mt-4 mb-6"
-            placeholder="Enter your password to confirm"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
 
           <View className="flex-row space-x-4">
             <TouchableOpacity
               className="flex-1 bg-gray-200 p-4 rounded-lg"
-              onPress={() => {
-                setPassword("");
-                onClose();
-              }}
+              onPress={onClose}
             >
               <Text className="text-center font-semibold">Cancel</Text>
             </TouchableOpacity>
@@ -54,7 +47,7 @@ export const DeleteAccountModal = ({ visible, onClose, onConfirm }) => {
               onPress={handleConfirm}
             >
               <Text className="text-white text-center font-semibold">
-                Delete
+                Clear data
               </Text>
             </TouchableOpacity>
           </View>

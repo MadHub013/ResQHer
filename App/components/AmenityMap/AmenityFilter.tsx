@@ -1,15 +1,29 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import type { Dispatch, SetStateAction } from "react";
+import type {
+  AmenityFilterKey,
+  AmenityFilters,
+} from "../../data/amenityData";
 
-const AmenityFilter = ({ filters, setFilters, darkMode }) => {
+interface AmenityFilterProps {
+  filters: AmenityFilters;
+  setFilters: Dispatch<SetStateAction<AmenityFilters>>;
+}
+
+const AmenityFilter = ({ filters, setFilters }: AmenityFilterProps) => {
   const filterTypes = [
     { key: "police", icon: "shield-outline", label: "Police" },
     { key: "hospital", icon: "medical-outline", label: "Hospital" },
     { key: "helpCenter", icon: "people-outline", label: "Help Center" },
     { key: "transport", icon: "bus-outline", label: "Transport" },
     { key: "safeCab", icon: "car-outline", label: "Safe Cab" },
-  ];
+  ] as const satisfies ReadonlyArray<{
+    key: AmenityFilterKey;
+    icon: React.ComponentProps<typeof Ionicons>["name"];
+    label: string;
+  }>;
 
   return (
     <ScrollView

@@ -1,30 +1,53 @@
-import React, { useState } from "react";
-import { Modal, View, Text, TextInput, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Alert, Modal, View, Text, TextInput, TouchableOpacity } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 
-export const AddGuardianModal = ({ visible, onClose, onSave }) => {
-  const [guardian, setGuardian] = useState({
-    name: "",
-    relation: "Parent",
-    phone: "",
-    email: "",
-    isPrimary: false,
-  });
+export interface Guardian {
+  id?: string;
+  name: string;
+  relation: string;
+  phone: string;
+  email: string;
+  isPrimary: boolean;
+}
+
+interface AddGuardianModalProps {
+  visible: boolean;
+  initialGuardian?: Guardian | null;
+  onClose: () => void;
+  onSave: (guardian: Guardian) => void;
+}
+
+const emptyGuardian: Guardian = {
+  name: "",
+  relation: "Parent",
+  phone: "",
+  email: "",
+  isPrimary: false,
+};
+
+export const AddGuardianModal = ({
+  visible,
+  initialGuardian,
+  onClose,
+  onSave,
+}: AddGuardianModalProps) => {
+  const [guardian, setGuardian] = useState<Guardian>(emptyGuardian);
+
+  useEffect(() => {
+    if (visible) setGuardian(initialGuardian ?? emptyGuardian);
+  }, [visible, initialGuardian]);
 
   const relations = ["Parent", "Sibling", "Friend", "Spouse", "Other"];
 
   const handleSave = () => {
-    if (guardian.name && guardian.phone) {
-      onSave(guardian);
-      setGuardian({
-        name: "",
-        relation: "Parent",
-        phone: "",
-        email: "",
-        isPrimary: false,
-      });
+    if (!guardian.name.trim() || !guardian.phone.trim()) {
+      Alert.alert("Missing details", "Enter the guardian's name and phone number.");
+      return;
     }
+    onSave({ ...guardian, name: guardian.name.trim(), phone: guardian.phone.trim() });
+    setGuardian(emptyGuardian);
   };
 
   return (
@@ -56,7 +79,7 @@ export const AddGuardianModal = ({ visible, onClose, onSave }) => {
               <View className="bg-gray-100 rounded-lg">
                 <Picker
                   selectedValue={guardian.relation}
-                  onValueChange={(value) =>
+                  onValueChange={(value: string) =>
                     setGuardian({ ...guardian, relation: value })
                   }
                 >
@@ -103,7 +126,7 @@ export const AddGuardianModal = ({ visible, onClose, onSave }) => {
             onPress={handleSave}
           >
             <Text className="text-white text-center font-semibold">
-              Add Guardian
+              {initialGuardian ? "Save Changes" : "Add Guardian"}
             </Text>
           </TouchableOpacity>
         </View>

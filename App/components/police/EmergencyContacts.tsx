@@ -1,4 +1,4 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Linking, Alert } from "react-native";
 import React from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -17,7 +17,7 @@ export default function EmergencyContacts() {
     {
       id: 3,
       name: "Police Control Room",
-      number: "100",
+      number: "112",
     },
   ];
 
@@ -33,7 +33,15 @@ export default function EmergencyContacts() {
             <Text className="font-semibold">{contact.name}</Text>
             <Text className="text-gray-600">{contact.number}</Text>
           </View>
-          <Pressable className="bg-green-500 p-2 rounded-full">
+          <Pressable
+            accessibilityLabel={`Call ${contact.name}`}
+            className="bg-green-500 p-2 rounded-full"
+            onPress={() =>
+              void Linking.openURL(`tel:${contact.number}`).catch(() =>
+                Alert.alert("Unable to open phone", `Call ${contact.number} directly.`)
+              )
+            }
+          >
             <MaterialIcons name="phone" size={24} color="white" />
           </Pressable>
         </View>

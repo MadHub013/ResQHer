@@ -1,5 +1,30 @@
 // enhancedAmenityData.ts
-export const enhancedAmenityData = [
+export interface Amenity {
+  id: string;
+  name: string;
+  type: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+  phone: string;
+  rating: number;
+  notes: string;
+}
+
+export const AMENITY_FILTER_KEYS = [
+  "police",
+  "hospital",
+  "helpCenter",
+  "transport",
+  "safeCab",
+  "shelter",
+  "pharmacy",
+] as const;
+
+export type AmenityFilterKey = (typeof AMENITY_FILTER_KEYS)[number];
+export type AmenityFilters = Record<AmenityFilterKey, boolean>;
+
+export const enhancedAmenityData: Amenity[] = [
   {
     id: "6",
     name: "National Women's Helpline",
