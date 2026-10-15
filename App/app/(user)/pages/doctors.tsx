@@ -61,7 +61,12 @@ const DOCTORS = [
   },
 ];
 
-const HEALTH_RESOURCES = [
+const HEALTH_RESOURCES: {
+  id: number;
+  title: string;
+  description: string;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+}[] = [
   {
     id: 1,
     title: "Women's Health Guide",
@@ -72,7 +77,7 @@ const HEALTH_RESOURCES = [
     id: 2,
     title: "Mental Wellness",
     description: "Understanding mental health and seeking help.",
-    icon: "brain-outline",
+    icon: "happy-outline",
   },
   {
     id: 3,
@@ -86,35 +91,34 @@ export default function DoctorsConnect() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<
+    (typeof DOCTORS)[number] | null
+  >(null);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
 
-  const handleEmergencyCall = (number) => {
+  const handleEmergencyCall = (number: string) => {
     Alert.alert("Emergency Call", "Are you sure you want to place this call?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Call", onPress: () => Linking.openURL(`tel:${number}`) },
+      {
+        text: "Call",
+        onPress: () =>
+          void Linking.openURL(`tel:${number}`).catch(() =>
+            Alert.alert("Unable to open phone", "Please dial the number directly.")
+          ),
+      },
     ]);
   };
 
-  const handleBooking = (doctor) => {
+  const handleBooking = (doctor: (typeof DOCTORS)[number]) => {
     setSelectedDoctor(doctor);
     setShowBookingModal(true);
   };
 
-  const handleSendLocation = () => {
-    Alert.alert(
-      "Share Location",
-      "Send your current location to nearest hospital?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Send",
-          onPress: () =>
-            Alert.alert("Success", "Location shared with emergency services!"),
-        },
-      ]
-    );
-  };
+  const filteredDoctors = DOCTORS.filter((doctor) =>
+    `${doctor.name} ${doctor.specialization} ${doctor.location}`
+      .toLowerCase()
+      .includes(searchQuery.trim().toLowerCase())
+  );
 
   return (
     <View className="flex-1 bg-[#FFF1F3]">
@@ -138,11 +142,11 @@ export default function DoctorsConnect() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              className="bg-[#DC143C] p-4 rounded-xl w-[48%] mb-3 shadow-md"
-              onPress={handleSendLocation}
+              className="bg-gray-200 p-4 rounded-xl w-[48%] mb-3"
+              disabled
             >
-              <Text className="text-white text-center font-medium">
-                Send Location
+              <Text className="text-gray-700 text-center font-medium">
+                Location sharing unavailable
               </Text>
             </TouchableOpacity>
           </View>
@@ -150,6 +154,10 @@ export default function DoctorsConnect() {
 
         {/* Search Doctors */}
         <View className="px-4">
+          <Text className="text-amber-900 bg-amber-100 rounded-lg p-3 mb-3">
+            Example listings only. Providers are not verified and booking or
+            emergency dispatch is not connected.
+          </Text>
           <TextInput
             className="bg-white p-3 rounded-xl mb-4 shadow-sm"
             placeholder="Search doctors by name or specialization..."
@@ -158,7 +166,7 @@ export default function DoctorsConnect() {
           />
 
           {/* Doctors List */}
-          {DOCTORS.map((doctor) => (
+          {filteredDoctors.map((doctor) => (
             <View
               key={doctor.id}
               className="bg-white p-4 rounded-xl mb-4 shadow-md"
@@ -228,15 +236,10 @@ export default function DoctorsConnect() {
         {/* Emergency Button */}
         <TouchableOpacity
           className="bg-[#DC143C] p-4 mx-4 mb-6 rounded-xl shadow-lg"
-          onPress={() => {
-            Alert.alert(
-              "Emergency Request Sent",
-              "Your emergency medical request has been received. Help is on the way."
-            );
-          }}
+          onPress={() => handleEmergencyCall("112")}
         >
           <Text className="text-white text-center text-lg font-bold">
-            Request Emergency Medical Help
+            Call Emergency Services (112)
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -251,22 +254,21 @@ export default function DoctorsConnect() {
         <View className="flex-1 justify-center items-center bg-black/50">
           <View className="bg-white p-6 rounded-xl w-[90%]">
             <Text className="text-xl font-bold mb-4 text-[#DC143C]">
-              Book Consultation
+              Booking unavailable
             </Text>
-            <TextInput
-              className="bg-[#FFF1F3] p-3 rounded-xl mb-4"
-              placeholder="Brief description of your health concern"
-              multiline
-            />
+            <Text className="text-gray-700 mb-4">
+              {selectedDoctor?.name} is an example listing. This app is not
+              connected to a booking service; contact a verified provider
+              directly.
+            </Text>
             <TouchableOpacity
               className="bg-[#DC143C] p-4 rounded-xl"
               onPress={() => {
-                Alert.alert("Success", "Consultation booked successfully!");
                 setShowBookingModal(false);
               }}
             >
               <Text className="text-white text-center font-medium">
-                Confirm Booking
+                Close
               </Text>
             </TouchableOpacity>
           </View>

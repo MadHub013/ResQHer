@@ -5,88 +5,45 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Switch,
   Alert,
   Dimensions,
   TextInput,
-  Vibration,
-  Modal,
+  Linking,
   Platform,
   ActivityIndicator,
+  Share,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { Ionicons } from "@expo/vector-icons";
 import Header from "@/app/AppComponents/User/Header";
 import { router } from "expo-router";
 import { Asset } from "expo-asset";
-import * as FileSystem from "expo-file-system";
-
-const DUMMY_ROUTES = [
-  {
-    id: 1,
-    name: "Safer Route",
-    safety: "Highly Safe",
-    eta: "27 mins",
-    distance: "17.7 km",
-    color: "#4CAF50",
-    instructions: [
-      "Continue onto Mahatma Gandhi Road",
-      "Keep left",
-      "Turn right onto Bhagwan Mahavir Marg",
-      "Turn right",
-      "Keep left onto Mahatma Gandhi Road",
-      "Turn right onto Mahatma Gandhi Marg",
-    ],
-  },
-  {
-    id: 2,
-    name: "Route 2",
-    safety: "Moderate Risk",
-    eta: "12 mins",
-    distance: "2.1 km",
-    color: "#FFA000",
-    instructions: [
-      "Continue onto Mahatma Gandhi Road",
-      "Keep left",
-      "Turn right onto Bhagwan Mahavir Marg",
-      "Turn right",
-      "Keep left onto Mahatma Gandhi Road",
-      "Turn right onto Mahatma Gandhi Marg",
-    ],
-  },
-];
+import * as FileSystem from "expo-file-system/legacy";
 
 export default function SafeTravel() {
   const [isTracking, setIsTracking] = useState(false);
-  const [audioDetection, setAudioDetection] = useState(false);
-  const [selectedRoute, setSelectedRoute] = useState(null);
   const [startLocation, setStartLocation] = useState("");
   const [endLocation, setEndLocation] = useState("");
   const [showRoutes, setShowRoutes] = useState(false);
   const [timerActive, setTimerActive] = useState(false);
-  const [showAlert, setShowAlert] = useState(false);
-  const [password, setPassword] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [currentMap, setCurrentMap] = useState("static");
   const [htmlContent, setHtmlContent] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const alertTimeoutRef = useRef(null);
-  const recordingTimeoutRef = useRef(null);
-  const timerIntervalRef = useRef(null);
-
-  const USER_PASSWORD = "1234";
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const MAP_SOURCES = {
     static: require("../../../assets/maps/staticmap.html"),
     route: require("../../../assets/maps/RouteWomen.html"),
-  };
+  } as const;
 
-  const loadLocalHtml = async (mapType = "static") => {
+  const loadLocalHtml = async (mapType: keyof typeof MAP_SOURCES = "static") => {
     try {
       setIsLoading(true);
       const asset = Asset.fromModule(MAP_SOURCES[mapType]);
       await asset.downloadAsync();
+      if (!asset.localUri) {
+        throw new Error("The map asset could not be loaded.");
+      }
       const htmlString = await FileSystem.readAsStringAsync(asset.localUri);
       setHtmlContent(htmlString);
     } catch (error) {
@@ -96,39 +53,6 @@ export default function SafeTravel() {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    let interval;
-    if (timerActive) {
-      interval = setInterval(() => {
-        triggerSafetyCheck();
-      }, 60 * 1000);
-    }
-    return () => clearInterval(interval);
-  }, [timerActive]);
-
-  useEffect(() => {
-    if (showAlert) {
-      Vibration.vibrate([500, 500], true);
-      alertTimeoutRef.current = setTimeout(() => {
-        if (showAlert) {
-          setShowAlert(false);
-          handleSafetyTimeout();
-        }
-      }, 30000);
-    } else {
-      Vibration.cancel();
-      if (alertTimeoutRef.current) {
-        clearTimeout(alertTimeoutRef.current);
-      }
-    }
-    return () => {
-      Vibration.cancel();
-      if (alertTimeoutRef.current) {
-        clearTimeout(alertTimeoutRef.current);
-      }
-    };
-  }, [showAlert]);
 
   useEffect(() => {
     if (timerActive) {
@@ -152,51 +76,20 @@ export default function SafeTravel() {
     loadLocalHtml();
   }, []);
 
-  const startRecording = async () => {
-    setIsRecording(true);
-    recordingTimeoutRef.current = setTimeout(() => {
-      stopRecording();
-    }, 15000);
-  };
-
-  const stopRecording = async () => {
-    setIsRecording(false);
-    Alert.alert(
-      "Recording Complete",
-      "Audio recording has been saved and sent to emergency contacts"
-    );
-  };
-
-  const triggerSafetyCheck = () => {
-    setShowAlert(true);
-  };
-
-  const handleSafetyTimeout = () => {
-    startRecording();
-    Alert.alert(
-      "Emergency Protocol Activated",
-      "Your current location has been shared with law enforcement."
-    );
-  };
-
-  const verifyPassword = () => {
-    if (password === USER_PASSWORD) {
-      setShowAlert(false);
-      setPassword("");
-      if (alertTimeoutRef.current) {
-        clearTimeout(alertTimeoutRef.current);
-      }
-    } else {
-      Alert.alert("Invalid Password", "Please try again");
+  const searchRoutes = async () => {
+    const origin = startLocation.trim();
+    const destination = endLocation.trim();
+    if (!origin || !destination) {
+      Alert.alert("Locations required", "Enter both a start and destination.");
+      return;
     }
-  };
-
-  const searchRoutes = () => {
-    if (startLocation && endLocation) {
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=walking`;
+    try {
+      await Linking.openURL(directionsUrl);
       setShowRoutes(true);
-      setCurrentMap("route");
-    } else {
-      Alert.alert("Please enter both start and end locations");
+      await loadLocalHtml("route");
+    } catch {
+      Alert.alert("Could not open directions", "Please check your internet connection and try again.");
     }
   };
 
@@ -204,7 +97,7 @@ export default function SafeTravel() {
     if (!isTracking) {
       Alert.alert(
         "Journey Started",
-        "Your guardians will be notified of your travel.",
+        "The elapsed-time counter will run on this device only. This app is not sharing your live location or notifying guardians.",
         [
           {
             text: "OK",
@@ -225,17 +118,23 @@ export default function SafeTravel() {
 
   const triggerSOS = () => {
     Alert.alert(
-      "SOS Activated",
-      "Emergency contacts have been notified with your location.",
-      [{ text: "OK" }]
+      "Call emergency services?",
+      "This opens your phone app to call 112. The app does not automatically send your location.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Call 112",
+          style: "destructive",
+          onPress: () =>
+            void Linking.openURL("tel:112").catch(() =>
+              Alert.alert("Unable to open phone", "Please call 112 directly.")
+            ),
+        },
+      ]
     );
   };
 
-  const handleRouteSelect = (route) => {
-    setSelectedRoute(route);
-  };
-
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
@@ -279,7 +178,7 @@ export default function SafeTravel() {
             />
           </View>
           <TouchableOpacity style={styles.searchButton} onPress={searchRoutes}>
-            <Text style={styles.searchButtonText}>Find Safe Routes</Text>
+            <Text style={styles.searchButtonText}>Open Walking Directions</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -320,14 +219,12 @@ export default function SafeTravel() {
 
       {showRoutes && (
         <View style={styles.bottomSheet}>
-          <View style={styles.safetyControls}>
-            <View style={styles.controlItem}>
-              <Text style={styles.controlLabel}>Audio Detection</Text>
-              <Switch
-                value={audioDetection}
-                onValueChange={setAudioDetection}
-              />
-            </View>
+          <Text style={styles.sectionTitle}>Walking directions</Text>
+          <Text style={styles.routeDetails}>
+            Directions open in Google Maps. This app does not calculate or
+            verify route safety, share live location, or notify contacts.
+          </Text>
+          <View className="flex-row mt-4">
             <TouchableOpacity
               style={[
                 styles.trackingButton,
@@ -336,72 +233,22 @@ export default function SafeTravel() {
               onPress={toggleTracking}
             >
               <Text style={styles.trackingButtonText}>
-                {isTracking ? "Stop Journey" : "Start Journey"}
+                {isTracking ? "Stop Journey Timer" : "Start Journey Timer"}
               </Text>
             </TouchableOpacity>
-          </View>
-
-          <Text style={styles.sectionTitle}>Available Routes</Text>
-          <ScrollView style={styles.routesContainer}>
-            {DUMMY_ROUTES.map((route) => (
-              <TouchableOpacity
-                key={route.id}
-                style={[
-                  styles.routeCard,
-                  selectedRoute?.id === route.id && styles.selectedRoute,
-                ]}
-                onPress={() => handleRouteSelect(route)}
-              >
-                <View style={styles.routeInfo}>
-                  <Text style={styles.routeName}>{route.name}</Text>
-                  <Text style={[styles.safetyLabel, { color: route.color }]}>
-                    {route.safety}
-                  </Text>
-                  <Text style={styles.routeDetails}>
-                    {route.eta} • {route.distance}
-                  </Text>
-                  {selectedRoute?.id === route.id && (
-                    <View style={styles.instructionsContainer}>
-                      {route.instructions
-                        .slice(0, 3)
-                        .map((instruction, idx) => (
-                          <Text key={idx} style={styles.instruction}>
-                            • {instruction}
-                          </Text>
-                        ))}
-                    </View>
-                  )}
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#666" />
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      <Modal visible={showAlert} transparent animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Safety Check</Text>
-            <Text style={styles.modalText}>
-              Please enter your password to confirm you're safe
-            </Text>
-            <TextInput
-              style={styles.passwordInput}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Enter password"
-              secureTextEntry
-            />
             <TouchableOpacity
-              style={styles.verifyButton}
-              onPress={verifyPassword}
+              style={[styles.trackingButton, { marginLeft: 8 }]}
+              onPress={() =>
+                void Share.share({
+                  message: `My planned journey: ${startLocation} to ${endLocation}`,
+                })
+              }
             >
-              <Text style={styles.verifyButtonText}>Verify</Text>
+              <Text style={styles.trackingButtonText}>Share Plan</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      )}
 
       <TouchableOpacity
         className="absolute bottom-5 right-5 w-16 h-16 m-1 rounded-full bg-[#DC143C] justify-center items-center shadow-lg"
@@ -412,11 +259,6 @@ export default function SafeTravel() {
         <Ionicons name="chatbubbles-outline" size={28} color="#FFF" />
       </TouchableOpacity>
 
-      {isRecording && (
-        <View style={styles.recordingIndicator}>
-          <Text style={styles.recordingText}>Recording...</Text>
-        </View>
-      )}
     </View>
   );
 }

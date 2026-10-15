@@ -1,14 +1,42 @@
-import React, { useState } from "react";
-import { Modal, View, Text, TextInput, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Alert, Modal, View, Text, TextInput, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-export const EditProfileModal = ({ visible, onClose, userData, onSave }) => {
-  const [formData, setFormData] = useState(userData);
+interface ProfileData {
+  name: string;
+  email: string;
+  phone: string;
+  profilePic: string | null;
+}
+
+interface EditProfileModalProps {
+  visible: boolean;
+  onClose: () => void;
+  userData: ProfileData;
+  onSave: (data: ProfileData) => void;
+}
+
+export const EditProfileModal = ({
+  visible,
+  onClose,
+  userData,
+  onSave,
+}: EditProfileModalProps) => {
+  const [formData, setFormData] = useState<ProfileData>(userData);
+
+  useEffect(() => {
+    if (visible) setFormData(userData);
+  }, [visible, userData]);
 
   const handleSave = () => {
-    if (formData.name && formData.email && formData.phone) {
-      onSave(formData);
+    const name = formData.name.trim();
+    const email = formData.email.trim();
+    const phone = formData.phone.trim();
+    if (!name || !email || !phone) {
+      Alert.alert("Missing details", "Enter your name, email, and phone number.");
+      return;
     }
+    onSave({ ...formData, name, email, phone });
   };
 
   return (

@@ -7,13 +7,27 @@ import {
   TextInput,
   Linking,
   Modal,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Header from "@/app/AppComponents/User/Header";
 
+type Helpline = {
+  name: string;
+  number: string;
+  desc: string;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  whatsapp?: boolean;
+};
+
+type HelplineCategory = {
+  category: string;
+  items: Helpline[];
+};
+
 // Helpline data structure
-const helplineData = [
+const helplineData: HelplineCategory[] = [
   {
     category: "Emergency",
     items: [
@@ -63,15 +77,19 @@ export default function Helplines() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [showSOSModal, setShowSOSModal] = useState(false);
 
-  const handleCall = (number) => {
-    Linking.openURL(`tel:${number}`);
+  const handleCall = (number: string) => {
+    void Linking.openURL(`tel:${number}`).catch(() =>
+      Alert.alert("Unable to open phone", "Please dial the number directly.")
+    );
   };
 
-  const handleWhatsApp = (number) => {
-    Linking.openURL(`whatsapp://send?phone=${number}`);
+  const handleWhatsApp = (number: string) => {
+    void Linking.openURL(`https://wa.me/${number}`).catch(() =>
+      Alert.alert("Unable to open WhatsApp", "Please try calling the helpline.")
+    );
   };
 
-  const HelplineCard = ({ item }) => (
+  const HelplineCard = ({ item }: { item: Helpline }) => (
     <View className="bg-white rounded-2xl p-4 mb-3 shadow-md">
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center flex-1">

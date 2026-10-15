@@ -74,5 +74,4 @@ To ensure ResQHer’s success, we must:
 ResQHer is not just an app—it’s a movement towards making **Delhi a safer city for women** through **technology, law enforcement, and community-driven change**.
 
 
-Contact
-For any questions or contributions, please reach out at [MadhavBajaj2006@gmail.com].
+

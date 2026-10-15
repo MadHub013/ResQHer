@@ -14,7 +14,7 @@ export default function Header() {
       ) : (
         <TouchableOpacity
           onPress={() => {
-            router.replace("../user");
+            router.replace("/user");
           }}
         >
           <Text className="text-3xl font-bold text-[#DC143C]">ResQHer</Text>
@@ -23,7 +23,7 @@ export default function Header() {
       <TouchableOpacity
         className="flex items-center justify-center w-12 h-12"
         onPress={() => {
-          router.push("../pages/userProfile");
+          router.push("/pages/userProfile");
         }}
       >
         <Ionicons name="person-circle-outline" size={42} color="#DC143C" />

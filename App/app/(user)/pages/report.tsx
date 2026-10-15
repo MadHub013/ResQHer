@@ -14,6 +14,18 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import Header from "@/app/AppComponents/User/Header";
+import { readLocalValue, writeLocalValue } from "@/utils/localStore";
+
+const REPORTS_KEY = "resqher.reports";
+
+interface IncidentReport {
+  id: string;
+  incidentType: string;
+  description: string;
+  location: string;
+  images: string[];
+  createdAt: string;
+}
 
 export default function Report() {
   const router = useRouter();
@@ -22,6 +34,7 @@ export default function Report() {
   const [location, setLocation] = useState<string>("");
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [recentReports, setRecentReports] = useState<IncidentReport[]>([]);
 
   const incidentTypes = [
     "Domestic Violence",
@@ -33,28 +46,39 @@ export default function Report() {
   ];
 
   useEffect(() => {
+    let isMounted = true;
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Denied",
-          "Location access is required for reporting."
+      try {
+        const savedReports = await readLocalValue<IncidentReport[]>(
+          REPORTS_KEY,
+          []
         );
-        return;
-      }
+        if (isMounted) setRecentReports(savedReports);
 
-      const location = await Location.getCurrentPositionAsync({});
-      const address = await Location.reverseGeocodeAsync({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
 
-      if (address[0]) {
-        setLocation(
-          `${address[0].street}, ${address[0].city}, ${address[0].region}`
-        );
+        const currentLocation = await Location.getCurrentPositionAsync({});
+        const addresses = await Location.reverseGeocodeAsync({
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude,
+        });
+
+        if (isMounted && addresses[0]) {
+          const address = addresses[0];
+          setLocation(
+            [address.street, address.city, address.region]
+              .filter(Boolean)
+              .join(", ")
+          );
+        }
+      } catch {
+        if (isMounted) setLocation("Location unavailable");
       }
     })();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const pickImage = async () => {
@@ -77,22 +101,41 @@ export default function Report() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!incidentType || !description) {
       Alert.alert("Error", "Please fill in all required fields");
       return;
     }
 
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const report: IncidentReport = {
+        id: Date.now().toString(),
+        incidentType,
+        description: description.trim(),
+        location,
+        images,
+        createdAt: new Date().toISOString(),
+      };
+      const updatedReports = [report, ...recentReports];
+      await writeLocalValue(REPORTS_KEY, updatedReports);
+      setRecentReports(updatedReports);
       setLoading(false);
       Alert.alert(
-        "Report Submitted",
-        "Your report has been submitted successfully. Authorities will contact you soon.",
-        [{ text: "OK", onPress: () => router.back() }]
+        "Report saved on this device",
+        "This project is not connected to a reporting service, so your report has not been sent to authorities. In an emergency, call 112.",
+        [{ text: "OK" }]
       );
-    }, 2000);
+      setIncidentType("");
+      setDescription("");
+      setImages([]);
+    } catch (error) {
+      setLoading(false);
+      Alert.alert(
+        "Could not save report",
+        error instanceof Error ? error.message : "Please try again."
+      );
+    }
   };
 
   return (
@@ -113,6 +156,12 @@ export default function Report() {
       </View>
 
       <ScrollView className="flex-1 p-5">
+        <View className="bg-amber-100 p-3 rounded-xl mb-4">
+          <Text className="text-amber-900">
+            Reports are saved on this device only; they are not sent to police.
+            Call 112 for immediate emergencies.
+          </Text>
+        </View>
         {/* Incident Type Selection */}
         <Text className="text-lg font-semibold mb-2">Type of Incident*</Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
@@ -187,6 +236,22 @@ export default function Report() {
             {loading ? "Submitting..." : "Submit Report"}
           </Text>
         </TouchableOpacity>
+        {recentReports.length > 0 && (
+          <View className="mb-8">
+            <Text className="text-lg font-semibold mb-2">Saved on this device</Text>
+            {recentReports.slice(0, 5).map((report) => (
+              <View key={report.id} className="bg-white p-3 rounded-xl mb-2">
+                <Text className="font-semibold">{report.incidentType}</Text>
+                <Text numberOfLines={2} className="text-gray-600">
+                  {report.description}
+                </Text>
+                <Text className="text-gray-500 text-xs mt-1">
+                  {new Date(report.createdAt).toLocaleString()}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );

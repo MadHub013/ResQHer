@@ -11,7 +11,6 @@ import {
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
 import Header from "../../AppComponents/User/Header";
-import { styled } from "nativewind";
 import LottieView from "lottie-react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -104,19 +103,32 @@ export default function LawyersConnect() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showConsultModal, setShowConsultModal] = useState(false);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
-  const [selectedLawyer, setSelectedLawyer] = useState(null);
+  const [selectedLawyer, setSelectedLawyer] = useState<
+    (typeof LAWYERS)[number] | null
+  >(null);
 
-  const handleEmergencyCall = async (number) => {
+  const handleEmergencyCall = (number: string) => {
     Alert.alert("Emergency Call", "Are you sure you want to place this call?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Call", onPress: () => Linking.openURL(`tel:${number}`) },
+      {
+        text: "Call",
+        onPress: () =>
+          void Linking.openURL(`tel:${number}`).catch(() =>
+            Alert.alert("Unable to open phone", "Please dial the number directly.")
+          ),
+      },
     ]);
   };
 
-  const handleConsultation = (lawyer) => {
+  const handleConsultation = (lawyer: (typeof LAWYERS)[number]) => {
     setSelectedLawyer(lawyer);
     setShowConsultModal(true);
   };
+  const filteredLawyers = LAWYERS.filter((lawyer) =>
+    `${lawyer.name} ${lawyer.specialization} ${lawyer.location}`
+      .toLowerCase()
+      .includes(searchQuery.trim().toLowerCase())
+  );
 
   return (
     <View className="flex-1 bg-[#FFF1F3]">
@@ -151,6 +163,10 @@ export default function LawyersConnect() {
 
         {/* Search and Filter Lawyers */}
         <View className="px-4">
+          <Text className="text-amber-900 bg-amber-100 rounded-lg p-3 mb-3">
+            Example listings only. Lawyers are not verified and consultations
+            or emergency dispatch are not connected.
+          </Text>
           <TextInput
             className="bg-white p-3 rounded-xl mb-4 shadow-sm"
             placeholder="Search lawyers..."
@@ -159,7 +175,7 @@ export default function LawyersConnect() {
           />
 
           {/* Lawyers List */}
-          {LAWYERS.map((lawyer) => (
+          {filteredLawyers.map((lawyer) => (
             <View
               key={lawyer.id}
               className="bg-white p-4 rounded-xl mb-4 shadow-md"
@@ -201,7 +217,7 @@ export default function LawyersConnect() {
             Know Your Rights
           </Text>
           {LEGAL_RESOURCES.map((resource) => (
-            <TouchableOpacity
+            <View
               key={resource.id}
               className="bg-white p-4 rounded-xl mb-4 shadow-md"
             >
@@ -209,25 +225,17 @@ export default function LawyersConnect() {
                 {resource.title}
               </Text>
               <Text className="text-gray-600">{resource.description}</Text>
-              <Text className="text-[#DC143C] mt-2 font-medium">
-                Read More →
-              </Text>
-            </TouchableOpacity>
+            </View>
           ))}
         </View>
 
         {/* Emergency Assistance Button */}
         <TouchableOpacity
           className="bg-[#DC143C] p-4 m-4 rounded-xl shadow-lg"
-          onPress={() => {
-            Alert.alert(
-              "Emergency Request Sent",
-              "Your emergency request has been received. A legal expert will contact you shortly."
-            );
-          }}
+          onPress={() => handleEmergencyCall("112")}
         >
           <Text className="text-white text-center text-lg font-bold">
-            Emergency Legal Assistance
+            Call Emergency Services (112)
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -242,25 +250,21 @@ export default function LawyersConnect() {
         <View className="flex-1 justify-center items-center bg-black/50">
           <View className="bg-white p-6 rounded-xl w-[90%]">
             <Text className="text-xl font-bold mb-4 text-[#DC143C]">
-              Request Consultation
+              Consultation unavailable
             </Text>
-            <TextInput
-              className="bg-[#FFF1F3] p-3 rounded-xl mb-4"
-              placeholder="Brief description of your case"
-              multiline
-            />
+            <Text className="text-gray-700 mb-4">
+              {selectedLawyer?.name} is an example listing. This app is not
+              connected to a legal consultation service; contact a verified
+              legal provider directly.
+            </Text>
             <TouchableOpacity
               className="bg-[#DC143C] p-4 rounded-xl"
               onPress={() => {
-                Alert.alert(
-                  "Success",
-                  "Consultation request sent successfully!"
-                );
                 setShowConsultModal(false);
               }}
             >
               <Text className="text-white text-center font-medium">
-                Submit Request
+                Close
               </Text>
             </TouchableOpacity>
           </View>

@@ -8,11 +8,26 @@ import {
   Switch,
   Image,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Header from "@/app/AppComponents/User/Header";
+import { readLocalValue, writeLocalValue } from "@/utils/localStore";
+
+interface FeedbackItem {
+  id: number;
+  text: string;
+  rating: number;
+  category: string;
+  status: string;
+  date: string;
+  isAnonymous?: boolean;
+  image?: string | null;
+}
+
+const FEEDBACK_KEY = "resqher.feedback";
 
 const FeedbackPage = () => {
   const router = useRouter();
@@ -20,41 +35,26 @@ const FeedbackPage = () => {
   const [rating, setRating] = useState(0);
   const [category, setCategory] = useState("general");
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [image, setImage] = useState(null);
-  const [feedbackHistory, setFeedbackHistory] = useState([
-    {
-      id: 1,
-      text: "The app is great but needs dark mode",
-      rating: 4,
-      category: "Feature Request",
-      status: "In Progress",
-      date: "2024-01-15",
-    },
-    {
-      id: 2,
-      text: "Emergency SOS takes too long to trigger. Please optimize response time.",
-      rating: 3,
-      category: "Bug Report",
-      status: "Received",
-      date: "2024-01-18",
-    },
-    {
-      id: 3,
-      text: "It would be great to have multilingual support for non-English users.",
-      rating: 5,
-      category: "Feature Request",
-      status: "Under Review",
-      date: "2024-01-20",
-    },
-    {
-      id: 4,
-      text: "I encountered a crash when trying to access the community section.",
-      rating: 2,
-      category: "Bug Report",
-      status: "Resolved",
-      date: "2024-01-22",
-    },
-  ]);
+  const [image, setImage] = useState<string | null>(null);
+  const [feedbackHistory, setFeedbackHistory] = useState<FeedbackItem[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    readLocalValue<FeedbackItem[]>(FEEDBACK_KEY, [])
+      .then((items) => {
+        if (isMounted) setFeedbackHistory(items);
+      })
+      .catch((error: unknown) => {
+        Alert.alert(
+          "Could not load feedback history",
+          error instanceof Error ? error.message : "Please restart the app."
+        );
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -67,8 +67,13 @@ const FeedbackPage = () => {
   ];
 
   const handleImagePick = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission needed", "Allow photo access to attach a screenshot.");
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -79,29 +84,46 @@ const FeedbackPage = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (feedback.length < 10) {
       Alert.alert("Error", "Feedback must be at least 10 characters long");
       return;
     }
 
-    const newFeedback = {
+    const categoryLabel =
+      categories.find((item) => item.value === category)?.label ?? category;
+    const newFeedback: FeedbackItem = {
       id: Date.now(),
       text: feedback,
       rating,
-      category,
+      category: categoryLabel,
       status: "Received",
       date: new Date().toISOString().split("T")[0],
       isAnonymous,
       image,
     };
 
-    setFeedbackHistory([newFeedback, ...feedbackHistory]);
-    setFeedback("");
-    setRating(0);
-    setCategory("general");
-    setImage(null);
-    Alert.alert("Success", "Feedback submitted successfully!");
+    setIsSubmitting(true);
+    try {
+      const updatedFeedback = [newFeedback, ...feedbackHistory];
+      await writeLocalValue(FEEDBACK_KEY, updatedFeedback);
+      setFeedbackHistory(updatedFeedback);
+      setFeedback("");
+      setRating(0);
+      setCategory("general");
+      setImage(null);
+      Alert.alert(
+        "Feedback saved on this device",
+        "It has not been sent to the project team because no feedback service is configured."
+      );
+    } catch (error) {
+      Alert.alert(
+        "Could not save feedback",
+        error instanceof Error ? error.message : "Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -113,6 +135,9 @@ const FeedbackPage = () => {
 
         {/* Feedback Form */}
         <View className="p-4">
+          <Text className="text-gray-600 mb-3">
+            Feedback is stored locally on this device and is not sent to the team.
+          </Text>
           <View className="bg-white rounded-2xl p-4 shadow-md mb-4">
             <Text className="text-lg font-semibold mb-2">Your Feedback</Text>
             <TextInput
@@ -208,11 +233,16 @@ const FeedbackPage = () => {
             {/* Submit Button */}
             <TouchableOpacity
               onPress={handleSubmit}
+              disabled={isSubmitting}
               className="bg-[#DC143C] rounded-xl py-3 items-center"
             >
-              <Text className="text-white font-bold text-lg">
-                Submit Feedback
-              </Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text className="text-white font-bold text-lg">
+                  Save Feedback
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
 

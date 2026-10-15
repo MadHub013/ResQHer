@@ -5,75 +5,116 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Switch,
-  TextInput,
-  Modal,
+  Alert,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import Header from "@/app/AppComponents/User/Header";
 import { GuardianCard } from "../../../components/UserProfile/GuardianCard";
 import { EditProfileModal } from "../../../components/UserProfile/EditProfileModal";
 import { AddGuardianModal } from "../../../components/UserProfile/AddGuardianModal";
 import { DeleteAccountModal } from "../../../components/UserProfile/DeleteAccountModal";
+import { readLocalValue, writeLocalValue } from "@/utils/localStore";
+import type { Guardian } from "../../../components/UserProfile/AddGuardianModal";
+
+const PROFILE_KEY = "resqher.profile";
+const GUARDIANS_KEY = "resqher.guardians";
+
+interface ProfileData {
+  name: string;
+  email: string;
+  phone: string;
+  profilePic: string | null;
+}
 
 export default function UserProfile() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [showAddGuardian, setShowAddGuardian] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
-  const [locationSharing, setLocationSharing] = useState(true);
-  const [smsAlerts, setSmsAlerts] = useState(true);
-  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
-  const [notifyGuardians, setNotifyGuardians] = useState(true);
-  const [emergencyAlerts, setEmergencyAlerts] = useState(true);
-  const [shakeSOS, setShakeSOS] = useState(true);
-
-  // Dummy user data
-  const [userData, setUserData] = useState({
-    name: "Shreya Dixit",
-    email: "shreya.d@example.com",
-    phone: "+91 98765 43210",
+  const [selectedGuardian, setSelectedGuardian] = useState<Guardian | null>(null);
+  const [userData, setUserData] = useState<ProfileData>({
+    name: "",
+    email: "",
+    phone: "",
     profilePic: null,
   });
 
-  // Dummy guardian data
-  const [guardians, setGuardians] = useState([
-    {
-      id: "1",
-      name: "Meena Dixit",
-      relation: "Mother",
-      phone: "+91 98765 43211",
-      email: "meena.d@example.com",
-      isPrimary: true,
-    },
-    {
-      id: "2",
-      name: "Rahul Dixit",
-      relation: "Brother",
-      phone: "+91 98765 43212",
-      email: "rahul.d@example.com",
-      isPrimary: false,
-    },
-  ]);
+  const [guardians, setGuardians] = useState<Guardian[]>([]);
 
-  const handleDeleteGuardian = (id) => {
-    // Prevent deleting if it's the last guardian
-    if (guardians.length <= 1) {
-      alert("You must have at least one emergency contact");
-      return;
+  React.useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      readLocalValue(PROFILE_KEY, userData),
+      readLocalValue<Guardian[]>(GUARDIANS_KEY, []),
+    ])
+      .then(([profile, savedGuardians]) => {
+        if (!isMounted) return;
+        setUserData(profile);
+        setGuardians(savedGuardians);
+      })
+      .catch((error: unknown) => {
+        Alert.alert(
+          "Could not load profile",
+          error instanceof Error ? error.message : "Please restart the app."
+        );
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const saveGuardians = async (updatedGuardians: Guardian[]): Promise<boolean> => {
+    try {
+      await writeLocalValue(GUARDIANS_KEY, updatedGuardians);
+      setGuardians(updatedGuardians);
+      return true;
+    } catch (error) {
+      Alert.alert(
+        "Could not save emergency contacts",
+        error instanceof Error ? error.message : "Please try again."
+      );
+      return false;
     }
-
-    // Prevent deleting primary guardian without reassigning
-    const guardian = guardians.find((g) => g.id === id);
-    if (guardian?.isPrimary && guardians.length > 1) {
-      alert("Please assign another primary guardian first");
-      return;
-    }
-
-    setGuardians(guardians.filter((g) => g.id !== id));
   };
 
-  const handleSetPrimary = (id) => {
-    setGuardians(
+  const pickProfilePhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission needed", "Allow photo access to choose a profile picture.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const updatedProfile = { ...userData, profilePic: result.assets[0].uri };
+      try {
+        await writeLocalValue(PROFILE_KEY, updatedProfile);
+        setUserData(updatedProfile);
+      } catch (error) {
+        Alert.alert(
+          "Could not save photo",
+          error instanceof Error ? error.message : "Please try again."
+        );
+      }
+    }
+  };
+
+  const handleDeleteGuardian = (id: string) => {
+    // Prevent deleting if it's the last guardian
+    const guardian = guardians.find((g) => g.id === id);
+    if (guardian?.isPrimary && guardians.length > 1) {
+      Alert.alert("Primary contact", "Choose another primary contact first.");
+    } else {
+      void saveGuardians(guardians.filter((g) => g.id !== id));
+    }
+  };
+
+  const handleSetPrimary = (id: string) => {
+    void saveGuardians(
       guardians.map((g) => ({
         ...g,
         isPrimary: g.id === id,
@@ -102,15 +143,16 @@ export default function UserProfile() {
             />
             <TouchableOpacity
               className="absolute bottom-0 right-0 bg-[#DC143C] p-2 rounded-full"
-              onPress={() => {
-                /* TODO: Image picker */
-              }}
+              onPress={pickProfilePhoto}
             >
               <Ionicons name="camera" size={20} color="white" />
             </TouchableOpacity>
           </View>
 
           <Text className="text-xl font-bold mt-2">{userData.name}</Text>
+          {userData.name.length === 0 && (
+            <Text className="text-gray-500 mt-1">Add your profile details to get started.</Text>
+          )}
           <TouchableOpacity
             className="mt-2 px-4 py-2 bg-[#DC143C] rounded-full"
             onPress={() => setIsEditMode(true)}
@@ -130,81 +172,13 @@ export default function UserProfile() {
           </View>
         </View>
 
-        {/* Settings Section */}
-        <View className="mt-6">
-          <Text className="text-lg font-bold mb-4">Safety Settings</Text>
-
-          <View className="space-y-4 bg-white p-4 rounded-lg">
-            <View className="flex-row justify-between items-center">
-              <View>
-                <Text className="font-medium">Live Location Sharing</Text>
-                <Text className="text-xs text-gray-500">
-                  Share location with guardians
-                </Text>
-              </View>
-              <Switch
-                value={locationSharing}
-                onValueChange={setLocationSharing}
-                trackColor={{ false: "#767577", true: "#DC143C" }}
-              />
-            </View>
-
-            <View className="flex-row justify-between items-center">
-              <View>
-                <Text className="font-medium">SMS Alerts</Text>
-                <Text className="text-xs text-gray-500">
-                  Send SMS during emergencies
-                </Text>
-              </View>
-              <Switch
-                value={smsAlerts}
-                onValueChange={setSmsAlerts}
-                trackColor={{ false: "#767577", true: "#DC143C" }}
-              />
-            </View>
-
-            <View className="flex-row justify-between items-center">
-              <View>
-                <Text className="font-medium">Notify Guardians</Text>
-                <Text className="text-xs text-gray-500">
-                  Alert guardians of your location
-                </Text>
-              </View>
-              <Switch
-                value={notifyGuardians}
-                onValueChange={setNotifyGuardians}
-                trackColor={{ false: "#767577", true: "#DC143C" }}
-              />
-            </View>
-
-            <View className="flex-row justify-between items-center">
-              <View>
-                <Text className="font-medium">Shake for SOS</Text>
-                <Text className="text-xs text-gray-500">
-                  Activate SOS by shaking device
-                </Text>
-              </View>
-              <Switch
-                value={shakeSOS}
-                onValueChange={setShakeSOS}
-                trackColor={{ false: "#767577", true: "#DC143C" }}
-              />
-            </View>
-
-            <View className="flex-row justify-between items-center">
-              <View>
-                <Text className="font-medium">Two-Factor Auth</Text>
-                <Text className="text-xs text-gray-500">
-                  Extra security for your account
-                </Text>
-              </View>
-              <Switch
-                value={twoFactorAuth}
-                onValueChange={setTwoFactorAuth}
-                trackColor={{ false: "#767577", true: "#DC143C" }}
-              />
-            </View>
-          </View>
+        <View className="mt-6 bg-amber-100 rounded-xl p-4">
+          <Text className="font-semibold text-amber-900">Safety integrations unavailable</Text>
+          <Text className="text-amber-900 mt-1">
+            Live location sharing, automatic SMS, shake detection, and account
+            security require services or native features that are not configured
+            in this project.
+          </Text>
         </View>
 
         {/* Guardians Section */}
@@ -221,6 +195,11 @@ export default function UserProfile() {
 
           {/* Guardian List */}
           <View className="space-y-4">
+            {guardians.length === 0 && (
+              <Text className="text-gray-600 mb-3">
+                Add a trusted contact before using contact-based safety features.
+              </Text>
+            )}
             {guardians.map((guardian) => (
               <GuardianCard
                 key={guardian.id}
@@ -228,8 +207,10 @@ export default function UserProfile() {
                 onDelete={handleDeleteGuardian}
                 onEdit={(id) => {
                   const guardian = guardians.find((g) => g.id === id);
-                  setSelectedGuardian(guardian);
-                  setShowAddGuardian(true);
+                  if (guardian) {
+                    setSelectedGuardian(guardian);
+                    setShowAddGuardian(true);
+                  }
                 }}
                 onSetPrimary={handleSetPrimary}
               />
@@ -246,7 +227,7 @@ export default function UserProfile() {
             className="bg-red-100 p-4 rounded-lg"
             onPress={() => setShowDeleteAccount(true)}
           >
-            <Text className="text-red-600">Delete Account</Text>
+              <Text className="text-red-600">Clear Local Data</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -256,30 +237,81 @@ export default function UserProfile() {
         visible={isEditMode}
         onClose={() => setIsEditMode(false)}
         userData={userData}
-        onSave={(data) => {
-          setUserData(data);
-          setIsEditMode(false);
+        onSave={async (data) => {
+          try {
+            await writeLocalValue(PROFILE_KEY, data);
+            setUserData(data);
+            setIsEditMode(false);
+          } catch (error) {
+            Alert.alert(
+              "Could not save profile",
+              error instanceof Error ? error.message : "Please try again."
+            );
+          }
         }}
       />
 
       <AddGuardianModal
         visible={showAddGuardian}
-        onClose={() => setShowAddGuardian(false)}
-        onSave={(guardian) => {
-          setGuardians([
-            ...guardians,
-            { ...guardian, id: Date.now().toString() },
-          ]);
+        initialGuardian={selectedGuardian}
+        onClose={() => {
           setShowAddGuardian(false);
+          setSelectedGuardian(null);
+        }}
+        onSave={(guardian) => {
+          const updatedGuardians = selectedGuardian
+            ? guardians.map((item) =>
+                item.id === selectedGuardian.id
+                  ? { ...guardian, id: selectedGuardian.id }
+                  : item
+              )
+            : [
+                ...guardians,
+                {
+                  ...guardian,
+                  id: Date.now().toString(),
+                  isPrimary: guardians.length === 0 || guardian.isPrimary,
+                },
+              ];
+          void saveGuardians(updatedGuardians).then((saved) => {
+            if (saved) {
+              setShowAddGuardian(false);
+              setSelectedGuardian(null);
+            }
+          });
         }}
       />
 
       <DeleteAccountModal
         visible={showDeleteAccount}
         onClose={() => setShowDeleteAccount(false)}
-        onConfirm={() => {
-          // TODO: Handle account deletion
-          setShowDeleteAccount(false);
+        onConfirm={async () => {
+          try {
+            await Promise.all([
+              writeLocalValue(PROFILE_KEY, {
+                name: "",
+                email: "",
+                phone: "",
+                profilePic: null,
+              }),
+              writeLocalValue(GUARDIANS_KEY, []),
+              writeLocalValue("resqher.reports", []),
+              writeLocalValue("resqher.feedback", []),
+              writeLocalValue("resqher.community.posts", []),
+            ]);
+            setUserData({ name: "", email: "", phone: "", profilePic: null });
+            setGuardians([]);
+            setShowDeleteAccount(false);
+            Alert.alert(
+              "Local data cleared",
+              "This app has no server account configured; only data stored on this device was cleared."
+            );
+          } catch (error) {
+            Alert.alert(
+              "Could not clear local data",
+              error instanceof Error ? error.message : "Please try again."
+            );
+          }
         }}
       />
     </View>

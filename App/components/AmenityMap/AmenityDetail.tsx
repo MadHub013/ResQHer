@@ -9,10 +9,24 @@ import {
   ScrollView,
   Linking,
   Platform,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import type { Amenity } from "../../data/amenityData";
 
-const AmenityDetail = ({ amenity, visible, onClose, darkMode }) => {
+interface AmenityDetailProps {
+  amenity: Amenity;
+  visible: boolean;
+  onClose: () => void;
+  darkMode: boolean;
+}
+
+const AmenityDetail = ({
+  amenity,
+  visible,
+  onClose,
+  darkMode,
+}: AmenityDetailProps) => {
   const translateY = React.useRef(new Animated.Value(300)).current;
   const opacity = React.useRef(new Animated.Value(0)).current;
 
@@ -49,25 +63,21 @@ const AmenityDetail = ({ amenity, visible, onClose, darkMode }) => {
   };
 
   const handleCall = () => {
-    const phoneNumber = Platform.select({
-      ios: `telprompt:${amenity.contact}`,
-      android: `tel:${amenity.contact}`,
-    });
-    Linking.openURL(phoneNumber);
+    const phoneNumber = amenity.phone.replace(/[^\d+]/g, "");
+    void Linking.openURL(`tel:${phoneNumber}`).catch(() =>
+      Alert.alert("Unable to open phone", "Please dial the number directly.")
+    );
   };
 
   const handleGetDirections = () => {
-    const scheme = Platform.select({
-      ios: "maps:0,0?q=",
-      android: "geo:0,0?q=",
-    });
-    const latLng = `${amenity.latitude},${amenity.longitude}`;
-    const label = amenity.name;
     const url = Platform.select({
-      ios: `${scheme}${label}@${latLng}`,
-      android: `${scheme}${latLng}(${label})`,
+      ios: `https://maps.apple.com/?q=${encodeURIComponent(amenity.name)}&ll=${amenity.latitude},${amenity.longitude}`,
+      android: `geo:${amenity.latitude},${amenity.longitude}?q=${encodeURIComponent(`${amenity.latitude},${amenity.longitude}(${amenity.name})`)}`,
     });
-    Linking.openURL(url);
+    if (!url) return;
+    void Linking.openURL(url).catch(() =>
+      Alert.alert("Unable to open maps", "Please use your preferred maps app.")
+    );
   };
 
   if (!visible || !amenity) return null;
@@ -176,7 +186,7 @@ const AmenityDetail = ({ amenity, visible, onClose, darkMode }) => {
                     marginBottom: 20,
                   }}
                 >
-                  {amenity.description}
+                  {amenity.notes}
                 </Text>
 
                 {/* Action buttons */}
@@ -262,7 +272,7 @@ const AmenityDetail = ({ amenity, visible, onClose, darkMode }) => {
                     }}
                   >
                     <Text style={{ fontSize: 16, color: "#4B5563" }}>
-                      {amenity.contact}
+                      {amenity.phone}
                     </Text>
                   </View>
                 </View>
@@ -276,8 +286,8 @@ const AmenityDetail = ({ amenity, visible, onClose, darkMode }) => {
 };
 
 // Helper functions
-const getTypeColor = (type) => {
-  const colors = {
+const getTypeColor = (type: string) => {
+  const colors: Record<string, string> = {
     police: "#1a73e8",
     hospital: "#e53935",
     helpCenter: "#9c27b0",
@@ -289,7 +299,7 @@ const getTypeColor = (type) => {
   return colors[type] || "#000";
 };
 
-const formatAmenityType = (type) => {
+const formatAmenityType = (type: string) => {
   return type.replace(/([A-Z])/g, " $1").trim();
 };
 

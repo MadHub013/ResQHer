@@ -5,11 +5,13 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
-import React from "react";
+import React, { PropsWithChildren } from "react";
 
 const ios = Platform.OS == "ios";
 
-export default function CustomKeyboardView({ children }) {
+export default function CustomKeyboardView({
+  children,
+}: PropsWithChildren) {
   return (
     <KeyboardAvoidingView
       behavior={ios ? "padding" : "height"}

@@ -4,19 +4,22 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Get started
 
-1. Install dependencies
+1. Install dependencies (the project uses Expo SDK 57)
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. Start the app with a clean Metro cache
 
    ```bash
-    npx expo start
+    npx expo start --clear
    ```
 
-In the output, you'll find options to open the app in a
+Open the project with the SDK 57 version of Expo Go. On Android, scan the QR
+code shown by Expo Go. Keep the phone and development computer on the same
+network. If Metro is already running, stop it with `Ctrl+C` before starting
+again so the phone receives the current bundle.
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
 - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
